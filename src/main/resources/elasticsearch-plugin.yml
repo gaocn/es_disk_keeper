@@ -1,0 +1,7 @@
+#####################################################################
+#     UESED To config plugin
+#
+#####################################################################
+threadsleep.period: 1m
+indices.persistence.day: 14d
+disk.watermark.percent: 80%
