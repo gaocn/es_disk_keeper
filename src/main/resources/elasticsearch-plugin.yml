@@ -5,3 +5,4 @@
 threadsleep.period: 1m
 indices.persistence.day: 14d
 disk.watermark.percent: 80%
+host: 10.233.87.241

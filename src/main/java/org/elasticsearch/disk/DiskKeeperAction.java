@@ -2,6 +2,7 @@ package org.elasticsearch.disk;
 
 import org.apache.http.HttpHost;
 import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.node.NodeClient;
@@ -14,7 +15,7 @@ import org.elasticsearch.rest.*;
 import java.io.IOException;
 
 public class DiskKeeperAction extends BaseRestHandler {
-    public static RestClient client;
+
 
     @Inject
     public DiskKeeperAction(Settings settings, RestController controller) {
@@ -24,13 +25,9 @@ public class DiskKeeperAction extends BaseRestHandler {
         controller.registerHandler(RestRequest.Method.GET, "/_disk_keeper", this);
 
         //运行DiskKeeper相关线程，用于周期
-        logger.info("[" + getClass().getName() + "] is Loaded, Run DiskKeeperThread" );
-        try {
-            client = RestClient.builder(new HttpHost("localhost", 9200)).build();
-            getDiskStats();
-        } catch (Exception e) {
-            logger.info("RestClient For DiskKeeper is Stop for some reason, Check It Out!");
-        }
+        logger.info(getClass().getName() + "is Loaded" );
+
+        new DiskKeeperThread("DiskKeeper", logger).start();
     }
 
     @Override
@@ -45,17 +42,6 @@ public class DiskKeeperAction extends BaseRestHandler {
             logger.info("endpoint /_disk_keeper is called!!");
             restChannel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
         };
-    }
-
-    public static void getDiskStats() {
-        try {
-            Response response = client.performRequest("GET","/_cat/allocation");
-            if (response.getStatusLine().getStatusCode() == 200) {
-                System.out.println(EntityUtils.toByteArray(response.getEntity()));
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
 }

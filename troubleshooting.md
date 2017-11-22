@@ -55,3 +55,22 @@ Exception in thread "main" java.lang.IllegalArgumentException: Could not resolve
 
 ### Maven跳过测试打包
 mvn clean install -DskipTests
+
+
+### ES插件中执行本地命令时错误
+
+``` 
+[2017-11-22T16:15:31,129][WARN ][o.e.b.ElasticsearchUncaughtExceptionHandler] [] uncaught exception in thread [Thread-5]
+java.security.AccessControlException: access denied ("java.io.FilePermission" "<<ALL FILES>>" "execute")
+        at java.security.AccessControlContext.checkPermission(AccessControlContext.java:472) ~[?:1.8.0_121]
+        at java.security.AccessController.checkPermission(AccessController.java:884) ~[?:1.8.0_121]
+        at java.lang.SecurityManager.checkPermission(SecurityManager.java:549) ~[?:1.8.0_121]
+        at java.lang.SecurityManager.checkExec(SecurityManager.java:799) ~[?:1.8.0_121]
+        at java.lang.ProcessBuilder.start(ProcessBuilder.java:1018) ~[?:1.8.0_121]
+        at java.lang.Runtime.exec(Runtime.java:620) ~[?:1.8.0_121]
+        at java.lang.Runtime.exec(Runtime.java:450) ~[?:1.8.0_121]
+        at java.lang.Runtime.exec(Runtime.java:347) ~[?:1.8.0_121]
+        at org.elasticsearch.disk.DiskKeeperAction.executeCMDLine(DiskKeeperAction.java:73) ~[?:?]
+        at org.elasticsearch.disk.DiskKeeperAction$1.run(DiskKeeperAction.java:43) ~[?:?]
+        at java.lang.Thread.run(Thread.java:745) [?:1.8.0_121]
+```
