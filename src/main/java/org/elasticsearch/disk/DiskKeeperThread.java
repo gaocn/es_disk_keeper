@@ -6,26 +6,66 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.Enumeration;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class DiskKeeperThread extends Thread {
-    private String hostAddress;
-    private int port;
+    private static String HOST_ADDR;
     private RestClient client;
     private Logger logger;
+
+    /**
+     * 保存按照时间格式(yyyy-MM-dd)排序后的索引，在删除过期索引时使用。
+     */
+    TreeMap<String, Set<String>> sortedMapIndices = new TreeMap<>();
+
+   // 插件配置
+    static int threadSleepPeriod = 30;
+    static int indicesPersistenceDay = 14;
+    static int diskWatermarkPercent = 80;
+    static int HTTP_PORT = 9200;
+
+    /** TODO
+     * 测试使用，用于显示已删除的index-pattern;
+     */
+    static ArrayList<String> deletedIndicesPattern = new ArrayList<>();
 
     public DiskKeeperThread(String name, Logger logger) {
         super(name);
         this.logger = logger;
+
         try {
-            hostAddress = DiskKeeperThread.getLocalHostLANAddress().getHostAddress();
+            HOST_ADDR = DiskKeeperThread.getLocalHostLANAddress().getHostAddress();
+            /**
+             * 该类运行时user.dir值为：
+             *      /home/sm01/elk5.2/elasticsearch-5.2.0
+             * 实际文件路径：
+             *     /home/sm01/elk5.2/elasticsearch-5.2.0/plugins/es_disk_keeper
+             */
+            Properties properties = new Properties();
+            String filePath = System.getProperty("user.dir") + "/plugins/es_disk_keeper/plugin-settings.properties";
+            properties.load(new FileInputStream(filePath));
+
+            if (!properties.getProperty("threadSleepPeriod").isEmpty()) {
+                threadSleepPeriod = Integer.valueOf(properties.getProperty("threadSleepPeriod"));
+            }
+            if (!properties.getProperty("indicesPersistenceDay").isEmpty()) {
+                indicesPersistenceDay = Integer.valueOf(properties.getProperty("indicesPersistenceDay"));
+            }
+            if (!properties.getProperty("diskWatermarkPercent").isEmpty()) {
+                diskWatermarkPercent = Integer.valueOf(properties.getProperty("diskWatermarkPercent"));
+            }
+            if (!properties.getProperty("httpPort").isEmpty()) {
+                HTTP_PORT = Integer.valueOf(properties.getProperty("httpPort"));
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        port = 9200;
     }
 
     @Override
@@ -35,25 +75,13 @@ public class DiskKeeperThread extends Thread {
 
         while (true) {
             try {
-                Thread.sleep(30 * 1000);
+                Thread.sleep(threadSleepPeriod * 1000);
             } catch (InterruptedException e) {
                 logger.info(name + "is interrupted!");
             }
 
-            try {
-                //NOTE: 必须改为本机的IP地址，否则会错误
-                client = RestClient.builder(new HttpHost(hostAddress, port)).build();
-                Response response = client.performRequest("GET","/_cat/allocation");
-
-                //0 0b 2.5gb 1.4gb 3.9gb 63 127.0.0.1 127.0.0.1 MH_Omy5
-                String allocation = EntityUtils.toString(response.getEntity());
-//                        logger.info(allocation);
-                logger.info("Disks Percent: " + DiskKeeperThread.calculateDiskUsage(allocation, ""));
-
-                client.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            deleteOutDateIndices();
+            diskUsageKeeper();
         }
     }
 
@@ -63,21 +91,142 @@ public class DiskKeeperThread extends Thread {
      669       35.4gb    73.4gb     94.8gb    168.3gb           43   10.230.135.128  10.230.135.128  node-128
      670       36.9gb    77.3gb     90.9gb    168.3gb           45   10.230.135.126  10.230.135.126  node-126
      *
-     *
      * NOTE: 只有数据节点才会有磁盘使用百分比，其他节点返回-1
-     * @param allocation
      */
-    public static int  calculateDiskUsage(String allocation, String host) {
-        host = "10.233.87.241";
-        String[] lines = allocation.split("\n");
+    public int calculateDiskUsage() {
+        //NOTE: 必须改为本机的IP地址，否则会错误
+        client = RestClient.builder(new HttpHost(HOST_ADDR, HTTP_PORT)).build();
+        Response response = null;
+        int diskPercent = -1;
 
-        for (String line : lines) {
-            if(line.contains(host)) {
-                String[] tmp = line.split("\\s+");
-                return Integer.valueOf(tmp[5]);
+        try {
+            response = client.performRequest("GET","/_cat/allocation");
+
+            if (response.getStatusLine().getStatusCode() == 200) {
+                //0 0b 2.5gb 1.4gb 3.9gb 63 127.0.0.1 127.0.0.1 MH_Omy5
+                String allocation = EntityUtils.toString(response.getEntity());
+                String[] lines = allocation.split("\n");
+                for (String line : lines) {
+                    if (line.contains(HOST_ADDR)) {
+                        String[] tmp = line.split("\\s+");
+                        diskPercent = Integer.valueOf(tmp[5]);
+                    }
+                }
+            }
+            client.close();
+            return diskPercent;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return diskPercent;
+    }
+
+    /**  0    1                  2                                             4             5 6       7 8     9        10
+     * green open kafka_oauth_ebfoperationdetail-2017.11.23           P88hVsPnSJKzzx-y4bgPfQ 2 1      17 0  858.2kb  429.1kb
+     * @return
+     */
+    public void refreshKeepedIndices() {
+        String index;
+        try {
+            client = RestClient.builder(new HttpHost(HOST_ADDR, HTTP_PORT)).build();
+            Response response = client.performRequest("GET","/_cat/indices");
+
+            if (response.getStatusLine().getStatusCode() == 200) {
+                String[] indicesInfo = EntityUtils.toString(response.getEntity()).split("\n");
+//                logger.info("There are " + indicesInfo.length + " indices totally!");
+                for (String indexInfo : indicesInfo) {
+                    index = indexInfo.split("\\s+")[2];
+                    try {
+                        if (index.matches("^(.*-)(\\d{4,4}\\.\\d{2,2}\\.\\d{2,2})$")) {
+                            String datePattern = index.substring(index.length() - 10);
+                            if (sortedMapIndices.get(datePattern) == null) {
+                                Set<String> indicesSet = new TreeSet<>();
+                                indicesSet.add(index);
+                                sortedMapIndices.put(datePattern, indicesSet);
+                            } else {
+                                sortedMapIndices.get(datePattern).add(index);
+                            }
+                        }
+                    } catch (StringIndexOutOfBoundsException e) {
+//                        logger.info(index + " should NOT deleted!");
+                    }
+                }
+            }
+            client.close();
+            // TEST
+//            ArrayList<String> sortedIndices = new ArrayList<>();
+//            for (Set<String> set : sortedMapIndices.values())
+//                sortedIndices.addAll(set);
+//            logger.info(sortedIndices);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void deleteOutDateIndices() {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy.MM.dd");
+        GregorianCalendar calendar = new GregorianCalendar(Locale.CHINA);
+        calendar.add(Calendar.DAY_OF_MONTH, -(indicesPersistenceDay+1));
+        String indexPattern = "/*-" + format.format(calendar.getTime());
+        try {
+            client = client = RestClient.builder(new HttpHost(HOST_ADDR, HTTP_PORT)).build();
+            Response response = client.performRequest("HEAD",indexPattern);
+            if (response.getStatusLine().getStatusCode() == 200) {
+                response = client.performRequest("DELETE", indexPattern);
+                if (response.getStatusLine().getStatusCode() == 200) {
+                    logger.info("IndexPattern: " + indexPattern + "[DELETED]");
+                    deletedIndicesPattern.add(indexPattern);
+                } else {
+                    logger.info("IndexPattern: " + indexPattern + "UNABLE to delete for " + response.getStatusLine().getReasonPhrase());
+                }
+            } else {
+                logger.info("IndexPattern: " + indexPattern + "  " + response.getStatusLine().getReasonPhrase());
+            }
+            client.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void diskUsageKeeper() {
+        logger.info("##### Disk Usage Keeper Chech Start #####");
+
+        int diskUsage = calculateDiskUsage();
+        //更新sortedMapIndices
+        refreshKeepedIndices();
+        client = client = RestClient.builder(new HttpHost(HOST_ADDR, HTTP_PORT)).build();
+
+        if (diskUsage != -1) {
+        indics_clean:
+            while (diskUsage > diskWatermarkPercent) {
+                for (String indexPattern : sortedMapIndices.get(sortedMapIndices.firstKey())) {
+                    try {
+                        Response response = client.performRequest("DELETE","/" + indexPattern);
+                        if (response.getStatusLine().getStatusCode() == 200) {
+                            logger.info(indexPattern + " DELETED for disk usage is above watermark!");
+                            deletedIndicesPattern.add(indexPattern);
+                        }
+                        client.performRequest("GET", "/_fluash");
+
+                        diskUsage = calculateDiskUsage();
+                        if (diskUsage < diskWatermarkPercent) {
+                            break indics_clean;
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                refreshKeepedIndices();
+                diskUsage = calculateDiskUsage();
             }
         }
-        return -1;
+        try {
+            client.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        logger.info("##### Disk Usage Keeper Chech End #####");
     }
 
     public static InetAddress getLocalHostLANAddress() throws Exception {
@@ -110,11 +259,6 @@ public class DiskKeeperThread extends Thread {
             e.printStackTrace();
         }
         return null;
-    }
-
-    public static void main(String[] args) throws Exception {
-        String allocation = "669       35.4gb    73.4gb     94.8gb    168.3gb           43   10.233.87.241  10.230.135.128  node-128\n670       36.9gb    77.3gb     90.9gb    168.3gb           45   10.230.135.126  10.230.135.126  node-126";
-        System.out.println(DiskKeeperThread.getLocalHostLANAddress().getHostAddress());
     }
 
 }

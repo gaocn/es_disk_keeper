@@ -1,10 +1,5 @@
 package org.elasticsearch.disk;
 
-import org.apache.http.HttpHost;
-import org.apache.http.util.EntityUtils;
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -39,7 +34,7 @@ public class DiskKeeperAction extends BaseRestHandler {
             builder.startObject();
             msg.toXContent(builder, restRequest);
             builder.endObject();
-            logger.info("endpoint /_disk_keeper is called!!");
+//            logger.info("endpoint /_disk_keeper is called!!");
             restChannel.sendResponse(new BytesRestResponse(RestStatus.OK, builder));
         };
     }
@@ -49,8 +44,16 @@ public class DiskKeeperAction extends BaseRestHandler {
 class DiskKeeperMsg implements ToXContent {
     @Override
     public XContentBuilder toXContent(XContentBuilder xContentBuilder, Params params) throws IOException {
-        return xContentBuilder.field("threadsleep.period", "1m")
-                .field("indices.persistence.day", "14d")
-                .field("disk.watermark.percent", "80" + "%");
+        return xContentBuilder
+                    .startObject("plugin-settings")
+                        .field("threadSleepPeriod", DiskKeeperThread.threadSleepPeriod +"s")
+                        .field("indicesPersistenceDay", DiskKeeperThread.indicesPersistenceDay+"d")
+                        .field("diskWatermarkPercent", DiskKeeperThread.diskWatermarkPercent + "%")
+                        .field("httpPort", DiskKeeperThread.HTTP_PORT)
+                    .endObject()
+                    .startObject("status")
+                        .field("deleted_index_pattern", DiskKeeperThread.deletedIndicesPattern)
+                    .endObject()
+                ;
     }
 }

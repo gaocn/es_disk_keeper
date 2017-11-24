@@ -74,3 +74,55 @@ java.security.AccessControlException: access denied ("java.io.FilePermission" "<
         at org.elasticsearch.disk.DiskKeeperAction$1.run(DiskKeeperAction.java:43) ~[?:?]
         at java.lang.Thread.run(Thread.java:745) [?:1.8.0_121]
 ```
+
+### AccessControlException 
+
+``` 
+java.security.AccessControlException: access denied ("java.io.FilePermission" "plugin-settings.properties" "read")
+        at java.security.AccessControlContext.checkPermission(AccessControlContext.java:472)
+        at java.security.AccessController.checkPermission(AccessController.java:884)
+        at java.lang.SecurityManager.checkPermission(SecurityManager.java:549)
+        at java.lang.SecurityManager.checkRead(SecurityManager.java:888)
+        at java.io.FileInputStream.<init>(FileInputStream.java:127)
+        at java.io.FileInputStream.<init>(FileInputStream.java:93)
+        at org.elasticsearch.disk.DiskKeeperThread.<clinit>(DiskKeeperThread.java:43)
+        at org.elasticsearch.disk.DiskKeeperAction.<init>(DiskKeeperAction.java:25)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+        at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
+        at org.elasticsearch.common.inject.DefaultConstructionProxyFactory$1.newInstance(DefaultConstructionProxyFactory.java:49)
+        at org.elasticsearch.common.inject.ConstructorInjector.construct(ConstructorInjector.java:86)
+        at org.elasticsearch.common.inject.ConstructorBindingImpl$Factory.get(ConstructorBindingImpl.java:116)
+        at org.elasticsearch.common.inject.ProviderToInternalFactoryAdapter$1.call(ProviderToInternalFactoryAdapter.java:47)
+        at org.elasticsearch.common.inject.InjectorImpl.callInContext(InjectorImpl.java:825)
+        at org.elasticsearch.common.inject.ProviderToInternalFactoryAdapter.get(ProviderToInternalFactoryAdapter.java:43)
+        at org.elasticsearch.common.inject.Scopes$1$1.get(Scopes.java:59)
+        at org.elasticsearch.common.inject.InternalFactoryToProviderAdapter.get(InternalFactoryToProviderAdapter.java:50)
+        at org.elasticsearch.common.inject.InjectorBuilder$1.call(InjectorBuilder.java:191)
+        at org.elasticsearch.common.inject.InjectorBuilder$1.call(InjectorBuilder.java:183)
+        at org.elasticsearch.common.inject.InjectorImpl.callInContext(InjectorImpl.java:818)
+        at org.elasticsearch.common.inject.InjectorBuilder.loadEagerSingletons(InjectorBuilder.java:183)
+        at org.elasticsearch.common.inject.InjectorBuilder.loadEagerSingletons(InjectorBuilder.java:173)
+        at org.elasticsearch.common.inject.InjectorBuilder.injectDynamically(InjectorBuilder.java:161)
+        at org.elasticsearch.common.inject.InjectorBuilder.build(InjectorBuilder.java:96)
+        at org.elasticsearch.common.inject.Guice.createInjector(Guice.java:96)
+        at org.elasticsearch.common.inject.Guice.createInjector(Guice.java:70)
+        at org.elasticsearch.common.inject.ModulesBuilder.createInjector(ModulesBuilder.java:43)
+        at org.elasticsearch.node.Node.<init>(Node.java:468)
+        at org.elasticsearch.node.Node.<init>(Node.java:232)
+        at org.elasticsearch.bootstrap.Bootstrap$6.<init>(Bootstrap.java:241)
+        at org.elasticsearch.bootstrap.Bootstrap.setup(Bootstrap.java:241)
+        at org.elasticsearch.bootstrap.Bootstrap.init(Bootstrap.java:333)
+        at org.elasticsearch.bootstrap.Elasticsearch.init(Elasticsearch.java:121)
+        at org.elasticsearch.bootstrap.Elasticsearch.execute(Elasticsearch.java:112)
+        at org.elasticsearch.cli.SettingCommand.execute(SettingCommand.java:54)
+        at org.elasticsearch.cli.Command.mainWithoutErrorHandling(Command.java:122)
+        at org.elasticsearch.cli.Command.main(Command.java:88)
+        at org.elasticsearch.bootstrap.Elasticsearch.main(Elasticsearch.java:89)
+        at org.elasticsearch.bootstrap.Elasticsearch.main(Elasticsearch.java:82)
+```
+
+解决方案：
+vi ../jdk1.8.0_121/jre/lib/security/java.policy
+    permission java.io.FilePermission "/home/sm01/elk5.2/elasticsearch-5.2.0/-", "read";
