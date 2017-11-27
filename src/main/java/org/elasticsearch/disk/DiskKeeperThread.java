@@ -108,7 +108,10 @@ public class DiskKeeperThread extends Thread {
                 String[] lines = allocation.split("\n");
                 for (String line : lines) {
                     if (line.contains(HOST_ADDR)) {
-                        String[] tmp = line.split("\\s+");
+//                        logger.info("Matched Line: " + line);
+                        String[] tmp = line.trim().split("\\s+");
+//                        logger.info("Splitted Line: "+ Arrays.toString(tmp) + "With length: " + tmp.length);
+
                         diskPercent = Integer.valueOf(tmp[5]);
                     }
                 }
@@ -261,4 +264,9 @@ public class DiskKeeperThread extends Thread {
         return null;
     }
 
+    public static void main(String[] args) {
+        String a = "0 0b 2.5gb 1.4gb 3.9gb 63 127.0.0.1 127.0.0.1 MH_Omy5";
+        String[] tmp = a.split("\\s+");
+        System.out.println(Integer.valueOf(tmp[5]));
+    }
 }
