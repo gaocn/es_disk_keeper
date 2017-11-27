@@ -33,7 +33,7 @@ public class DiskKeeperThread extends Thread {
     /** TODO
      * 测试使用，用于显示已删除的index-pattern;
      */
-    static ArrayList<String> deletedIndicesPattern = new ArrayList<>();
+    static Set<String> deletedIndicesPattern = new TreeSet<>();
 
     public DiskKeeperThread(String name, Logger logger) {
         super(name);
