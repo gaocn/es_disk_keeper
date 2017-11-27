@@ -174,17 +174,13 @@ public class DiskKeeperThread extends Thread {
         String indexPattern = "/*-" + format.format(calendar.getTime());
         try {
             client = client = RestClient.builder(new HttpHost(HOST_ADDR, HTTP_PORT)).build();
-            Response response = client.performRequest("HEAD",indexPattern);
+            // head /*-yyyy-MM-dd 检查结果为404，因为不存在这种名称的索引，因此该方法直接删除过期的索引！
+            Response response = client.performRequest("DELETE", indexPattern);
             if (response.getStatusLine().getStatusCode() == 200) {
-                response = client.performRequest("DELETE", indexPattern);
-                if (response.getStatusLine().getStatusCode() == 200) {
                     logger.info("IndexPattern: " + indexPattern + "[DELETED]");
                     deletedIndicesPattern.add(indexPattern);
-                } else {
-                    logger.info("IndexPattern: " + indexPattern + "UNABLE to delete for " + response.getStatusLine().getReasonPhrase());
-                }
             } else {
-                logger.info("IndexPattern: " + indexPattern + "  " + response.getStatusLine().getReasonPhrase());
+                logger.info("IndexPattern: " + indexPattern + "UNABLE to delete for " + response.getStatusLine().getReasonPhrase());
             }
             client.close();
         } catch (IOException e) {
