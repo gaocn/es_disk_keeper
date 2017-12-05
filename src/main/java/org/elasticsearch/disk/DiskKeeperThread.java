@@ -168,6 +168,11 @@ public class DiskKeeperThread extends Thread {
     }
 
     public void deleteOutDateIndices() {
+        // Do Not Delete indices(store indices as long as possible!)
+        if (indicesPersistenceDay == 0) {
+            return;
+        }
+
         SimpleDateFormat format = new SimpleDateFormat("yyyy.MM.dd");
         GregorianCalendar calendar = new GregorianCalendar(Locale.CHINA);
         calendar.add(Calendar.DAY_OF_MONTH, -(indicesPersistenceDay+1));
