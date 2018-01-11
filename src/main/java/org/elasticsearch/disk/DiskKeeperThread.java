@@ -19,6 +19,8 @@ public class DiskKeeperThread extends Thread {
     private RestClient client;
     private Logger logger;
 
+
+
     /**
      * 保存按照时间格式(yyyy-MM-dd)排序后的索引，在删除过期索引时使用。
      */
@@ -38,6 +40,7 @@ public class DiskKeeperThread extends Thread {
     public DiskKeeperThread(String name, Logger logger) {
         super(name);
         this.logger = logger;
+        Thread.setDefaultUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
 
         try {
             HOST_ADDR = DiskKeeperThread.getLocalHostLANAddress().getHostAddress();
@@ -282,5 +285,18 @@ public class DiskKeeperThread extends Thread {
 
 
          */
+    }
+}
+
+class DiskKeeperThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
+    private Logger logger;
+
+    public DiskKeeperThreadExceptionHandler(Logger logger) {
+        this.logger = logger;
+    }
+
+    @Override
+    public void uncaughtException(Thread t, Throwable e) {
+        logger.info("Exception Ignored: " + e.getMessage());
     }
 }
