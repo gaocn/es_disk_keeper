@@ -138,8 +138,8 @@ public class DiskKeeperThread extends Thread {
                 String[] indicesInfo = EntityUtils.toString(response.getEntity()).split("\n");
 //                logger.info("There are " + indicesInfo.length + " indices totally!");
                 for (String indexInfo : indicesInfo) {
-                    index = indexInfo.split("\\s+")[2];
                     try {
+                        index = indexInfo.split("\\s+")[2];
                         if (index.matches("^(.*-)(\\d{4,4}\\.\\d{2,2}\\.\\d{2,2})$")) {
                             String datePattern = index.substring(index.length() - 10);
                             if (sortedMapIndices.get(datePattern) == null) {
@@ -150,7 +150,7 @@ public class DiskKeeperThread extends Thread {
                                 sortedMapIndices.get(datePattern).add(index);
                             }
                         }
-                    } catch (StringIndexOutOfBoundsException e) {
+                    } catch (Exception e) {
 //                        logger.info(index + " should NOT deleted!");
                     }
                 }
@@ -211,7 +211,7 @@ public class DiskKeeperThread extends Thread {
                             logger.info(indexPattern + " DELETED for disk usage is above watermark!");
                             deletedIndicesPattern.add(indexPattern);
                         }
-                        client.performRequest("GET", "/_fluash");
+                        client.performRequest("GET", "/_flush");
 
                         diskUsage = calculateDiskUsage();
                         if (diskUsage < diskWatermarkPercent) {
@@ -230,7 +230,7 @@ public class DiskKeeperThread extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        logger.info("##### Disk Usage Keeper Chech End #####");
+        logger.info("##### Disk Usage Keeper Check End #####");
     }
 
     public static InetAddress getLocalHostLANAddress() throws Exception {
@@ -269,5 +269,16 @@ public class DiskKeeperThread extends Thread {
         String a = "0 0b 2.5gb 1.4gb 3.9gb 63 127.0.0.1 127.0.0.1 MH_Omy5";
         String[] tmp = a.split("\\s+");
         System.out.println(Integer.valueOf(tmp[5]));
+
+        /**
+         * 单节点，无索引数据时报错
+         [2018-01-11T11:01:14,435][WARN ][o.e.b.ElasticsearchUncaughtExceptionHandler] [node_128] uncaught exception in thread [DiskKeeper]
+         java.lang.ArrayIndexOutOfBoundsException: 2
+         at org.elasticsearch.disk.DiskKeeperThread.refreshKeepedIndices(DiskKeeperThread.java:141) ~[?:?]
+         at org.elasticsearch.disk.DiskKeeperThread.diskUsageKeeper(DiskKeeperThread.java:196) ~[?:?]
+         at org.elasticsearch.disk.DiskKeeperThread.run(DiskKeeperThread.java:84) ~[?:?]
+
+
+         */
     }
 }
