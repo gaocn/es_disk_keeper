@@ -211,7 +211,9 @@ public class DiskKeeperThread extends Thread {
                             logger.info(indexPattern + " DELETED for disk usage is above watermark!");
                             deletedIndicesPattern.add(indexPattern);
                         }
-                        client.performRequest("GET", "/_flush");
+                        //该操作会持久化内存数据到磁盘缓冲区，会执行segment merge操作
+                        response = client.performRequest("GET", "/_flush");
+                        logger.info("GET /_flush http/1.1 \n"+ EntityUtils.toString(response.getEntity()));
 
                         diskUsage = calculateDiskUsage();
                         if (diskUsage < diskWatermarkPercent) {
