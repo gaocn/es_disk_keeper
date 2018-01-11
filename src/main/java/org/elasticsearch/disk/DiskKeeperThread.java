@@ -40,7 +40,7 @@ public class DiskKeeperThread extends Thread {
     public DiskKeeperThread(String name, Logger logger) {
         super(name);
         this.logger = logger;
-        Thread.setDefaultUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
+        this.setUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
 
         try {
             HOST_ADDR = DiskKeeperThread.getLocalHostLANAddress().getHostAddress();
