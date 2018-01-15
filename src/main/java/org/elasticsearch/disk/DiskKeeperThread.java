@@ -5,9 +5,9 @@ import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.utils.DateUtils;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -23,6 +23,7 @@ public class DiskKeeperThread extends Thread {
 
     /**
      * 保存按照时间格式(yyyy-MM-dd)排序后的索引，在删除过期索引时使用。
+     *
      */
     TreeMap<String, Set<String>> sortedMapIndices = new TreeMap<>();
 
@@ -32,10 +33,12 @@ public class DiskKeeperThread extends Thread {
     static int diskWatermarkPercent = 80;
     static int HTTP_PORT = 9200;
 
-    /** TODO
+    /**
      * 测试使用，用于显示已删除的index-pattern;
+     * 每个月清理一次该数据（每个月的最后一天），并把数据打印到本地日志中作为记录
      */
     static Set<String> deletedIndicesPattern = new TreeSet<>();
+
 
     public DiskKeeperThread(String name, Logger logger) {
         super(name);
@@ -85,6 +88,8 @@ public class DiskKeeperThread extends Thread {
 
             deleteOutDateIndices();
             diskUsageKeeper();
+            clearDeletedIndicsPattern();
+
         }
     }
 
@@ -270,6 +275,13 @@ public class DiskKeeperThread extends Thread {
         return null;
     }
 
+    public  void clearDeletedIndicsPattern() {
+        if (DateUtils.endOfMonth()) {
+            logger.info("At end of the Month, clear [deletedIndicesPattern]: " + deletedIndicesPattern);
+            deletedIndicesPattern.clear();
+        }
+    }
+
     public static void main(String[] args) {
         String a = "0 0b 2.5gb 1.4gb 3.9gb 63 127.0.0.1 127.0.0.1 MH_Omy5";
         String[] tmp = a.split("\\s+");
@@ -282,7 +294,6 @@ public class DiskKeeperThread extends Thread {
          at org.elasticsearch.disk.DiskKeeperThread.refreshKeepedIndices(DiskKeeperThread.java:141) ~[?:?]
          at org.elasticsearch.disk.DiskKeeperThread.diskUsageKeeper(DiskKeeperThread.java:196) ~[?:?]
          at org.elasticsearch.disk.DiskKeeperThread.run(DiskKeeperThread.java:84) ~[?:?]
-
 
          */
     }
