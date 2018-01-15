@@ -11,6 +11,10 @@ import java.io.IOException;
 
 public class DiskKeeperAction extends BaseRestHandler {
 
+    @Override
+    public String getName() {
+        return "es_disk_keeper";
+    }
 
     @Inject
     public DiskKeeperAction(Settings settings, RestController controller) {

@@ -6,10 +6,12 @@
 
     <groupId>e3c.abc</groupId>
     <artifactId>es_disk_keeper</artifactId>
-    <version>5.2.0-SNAPSHOT</version>
+    <!--<version>5.2.0-SNAPSHOT</version>-->
+    <version>6.0.0-SNAPSHOT</version>
 
     <properties>
-        <elasticsearch.version>5.2.0</elasticsearch.version>
+        <!--<elasticsearch.version>5.2.0</elasticsearch.version>-->
+        <elasticsearch.version>6.0.0</elasticsearch.version>
     </properties>
 
     <dependencies>
@@ -17,6 +19,12 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
+            <version>${elasticsearch.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>transport</artifactId>
             <version>${elasticsearch.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -34,18 +42,6 @@
             <version>4.2.2</version>
             <scope>test</scope>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>org.apache.logging.log4j</groupId>-->
-            <!--<artifactId>log4j-api</artifactId>-->
-            <!--<version>2.7</version>-->
-            <!--<scope>test</scope>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.apache.logging.log4j</groupId>-->
-            <!--<artifactId>log4j-core</artifactId>-->
-            <!--<version>2.7</version>-->
-            <!--<scope>test</scope>-->
-        <!--</dependency>-->
 
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -55,7 +51,9 @@
         <dependency>
             <groupId>org.elasticsearch.client</groupId>
             <artifactId>rest</artifactId>
-            <version>5.2.0</version>
+            <!--<version>5.2.0</version>-->
+            <!--rest 6.0.0-alpha1要求es版本也要是6.0.0-alpha1暂不能使用-->
+            <version>6.0.0-alpha1</version>
         </dependency>
 
         <!--elasticsearch中已经提供了jar，不需要再编译时再添加-->
