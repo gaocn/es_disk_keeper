@@ -94,6 +94,7 @@ public class DiskKeeperThread extends Observable implements Runnable {
             } catch (Exception e) {
                 //通知观察者，线程遇到异常会推出
                 doNotify();
+                //抛出异常后，跳出循环保证线程终止
                 break;
             }
 
