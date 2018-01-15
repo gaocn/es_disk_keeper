@@ -14,11 +14,10 @@ import java.net.NetworkInterface;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-public class DiskKeeperThread extends Thread {
+public class DiskKeeperThread extends Observable implements Runnable {
     private static String HOST_ADDR;
     private RestClient client;
     private Logger logger;
-
 
 
     /**
@@ -40,10 +39,15 @@ public class DiskKeeperThread extends Thread {
     static Set<String> deletedIndicesPattern = new TreeSet<>();
 
 
+    public void doNotify() {
+        super.setChanged();
+        notifyObservers();
+    }
+
     public DiskKeeperThread(String name, Logger logger) {
-        super(name);
+//        super(name);
         this.logger = logger;
-        this.setUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
+//        this.setUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
 
         try {
             HOST_ADDR = DiskKeeperThread.getLocalHostLANAddress().getHostAddress();
@@ -81,14 +85,17 @@ public class DiskKeeperThread extends Thread {
 
         while (true) {
             try {
-                Thread.sleep(threadSleepPeriod * 1000);
-            } catch (InterruptedException e) {
-                logger.info(name + "is interrupted!");
-            }
+                //每三十分钟检查一次
+                Thread.sleep( 30 * 60 * 1000);
 
-            deleteOutDateIndices();
-            diskUsageKeeper();
-            clearDeletedIndicsPattern();
+                deleteOutDateIndices();
+                diskUsageKeeper();
+                clearDeletedIndicsPattern();
+            } catch (Exception e) {
+                //通知观察者，线程遇到异常会推出
+                doNotify();
+                break;
+            }
 
         }
     }
@@ -299,15 +306,15 @@ public class DiskKeeperThread extends Thread {
     }
 }
 
-class DiskKeeperThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
-    private Logger logger;
-
-    public DiskKeeperThreadExceptionHandler(Logger logger) {
-        this.logger = logger;
-    }
-
-    @Override
-    public void uncaughtException(Thread t, Throwable e) {
-        logger.info("Exception Ignored: " + e.getMessage());
-    }
-}
+//class DiskKeeperThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
+//    private Logger logger;
+//
+//    public DiskKeeperThreadExceptionHandler(Logger logger) {
+//        this.logger = logger;
+//    }
+//
+//    @Override
+//    public void uncaughtException(Thread t, Throwable e) {
+//        logger.info("Exception Ignored: " + e.getMessage());
+//    }
+//}
