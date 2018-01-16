@@ -85,8 +85,8 @@ public class DiskKeeperThread extends Observable implements Runnable {
 
         while (true) {
             try {
-                //每三十分钟检查一次
-                Thread.sleep( 30 * 60 * 1000);
+                //默认每三十分钟检查一次
+                Thread.sleep( threadSleepPeriod * 60 * 1000);
 
                 deleteOutDateIndices();
                 diskUsageKeeper();
