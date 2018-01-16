@@ -51,7 +51,7 @@ class DiskKeeperMsg implements ToXContent {
     public XContentBuilder toXContent(XContentBuilder xContentBuilder, Params params) throws IOException {
         return xContentBuilder
                     .startObject("plugin-settings")
-                        .field("threadSleepPeriod", DiskKeeperThread.threadSleepPeriod +"s")
+                        .field("threadSleepPeriod", DiskKeeperThread.threadSleepPeriod +"m")
                         .field("indicesPersistenceDay", DiskKeeperThread.indicesPersistenceDay+"d")
                         .field("diskWatermarkPercent", DiskKeeperThread.diskWatermarkPercent + "%")
                         .field("httpPort", DiskKeeperThread.HTTP_PORT)

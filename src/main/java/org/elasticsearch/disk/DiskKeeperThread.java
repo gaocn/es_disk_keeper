@@ -151,9 +151,12 @@ public class DiskKeeperThread extends Observable implements Runnable {
             Response response = client.performRequest("GET","/_cat/indices");
 
             if (response.getStatusLine().getStatusCode() == 200) {
-                String[] indicesInfo = EntityUtils.toString(response.getEntity()).split("\n");
-//                logger.info("There are " + indicesInfo.length + " indices totally!");
+                String[] indicesInfo = EntityUtils.toString(response.getEntity()).trim().split("\n");
+
                 for (String indexInfo : indicesInfo) {
+                    //若返回为空行，则不处理
+                    if (indexInfo.isEmpty()) continue;
+
                     try {
                         index = indexInfo.split("\\s+")[2];
                         if (index.matches("^(.*-)(\\d{4,4}\\.\\d{2,2}\\.\\d{2,2})$")) {
@@ -167,17 +170,11 @@ public class DiskKeeperThread extends Observable implements Runnable {
                             }
                         }
                     } catch (Exception e) {
-//                        logger.info(index + " should NOT deleted!");
+                        //若取不到第三个值，则会抛出ArrayOutOfBoundException，直接丢弃异常
                     }
                 }
             }
             client.close();
-            // TEST
-//            ArrayList<String> sortedIndices = new ArrayList<>();
-//            for (Set<String> set : sortedMapIndices.values())
-//                sortedIndices.addAll(set);
-//            logger.info(sortedIndices);
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -210,7 +207,7 @@ public class DiskKeeperThread extends Observable implements Runnable {
     }
 
     public void diskUsageKeeper() {
-        logger.info("##### Disk Usage Keeper Chech Start #####");
+        logger.info("##### Disk Usage Keeper Check Start #####");
 
         int diskUsage = calculateDiskUsage();
         //更新sortedMapIndices
@@ -304,6 +301,13 @@ public class DiskKeeperThread extends Observable implements Runnable {
          at org.elasticsearch.disk.DiskKeeperThread.run(DiskKeeperThread.java:84) ~[?:?]
 
          */
+        String[] indicesInfo;
+        //若返回为空行，则不处理
+        String res = "  ".trim();
+//        indicesInfo = res.isEmpty()? new String[]{} : res.split("\n");
+        indicesInfo = res.split("\n");
+        for (String s : indicesInfo)
+            System.out.println("nihao " + s.isEmpty());
     }
 }
 
