@@ -14,11 +14,10 @@ import java.net.NetworkInterface;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-public class DiskKeeperThread extends Thread {
+public class DiskKeeperThread extends Observable implements Runnable {
     private static String HOST_ADDR;
     private RestClient client;
     private Logger logger;
-
 
 
     /**
@@ -40,10 +39,15 @@ public class DiskKeeperThread extends Thread {
     static Set<String> deletedIndicesPattern = new TreeSet<>();
 
 
+    public void doNotify() {
+        super.setChanged();
+        notifyObservers();
+    }
+
     public DiskKeeperThread(String name, Logger logger) {
-        super(name);
+//        super(name);
         this.logger = logger;
-        this.setUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
+//        this.setUncaughtExceptionHandler(new DiskKeeperThreadExceptionHandler(logger));
 
         try {
             HOST_ADDR = DiskKeeperThread.getLocalHostLANAddress().getHostAddress();
@@ -81,14 +85,18 @@ public class DiskKeeperThread extends Thread {
 
         while (true) {
             try {
-                Thread.sleep(threadSleepPeriod * 1000);
-            } catch (InterruptedException e) {
-                logger.info(name + "is interrupted!");
-            }
+                //默认每三十分钟检查一次
+                Thread.sleep( threadSleepPeriod * 60 * 1000);
 
-            deleteOutDateIndices();
-            diskUsageKeeper();
-            clearDeletedIndicsPattern();
+                deleteOutDateIndices();
+                diskUsageKeeper();
+                clearDeletedIndicsPattern();
+            } catch (Exception e) {
+                //通知观察者，线程遇到异常会推出
+                doNotify();
+                //抛出异常后，跳出循环保证线程终止
+                break;
+            }
 
         }
     }
@@ -143,9 +151,12 @@ public class DiskKeeperThread extends Thread {
             Response response = client.performRequest("GET","/_cat/indices");
 
             if (response.getStatusLine().getStatusCode() == 200) {
-                String[] indicesInfo = EntityUtils.toString(response.getEntity()).split("\n");
-//                logger.info("There are " + indicesInfo.length + " indices totally!");
+                String[] indicesInfo = EntityUtils.toString(response.getEntity()).trim().split("\n");
+
                 for (String indexInfo : indicesInfo) {
+                    //若返回为空行，则不处理
+                    if (indexInfo.isEmpty()) continue;
+
                     try {
                         index = indexInfo.split("\\s+")[2];
                         if (index.matches("^(.*-)(\\d{4,4}\\.\\d{2,2}\\.\\d{2,2})$")) {
@@ -159,17 +170,11 @@ public class DiskKeeperThread extends Thread {
                             }
                         }
                     } catch (Exception e) {
-//                        logger.info(index + " should NOT deleted!");
+                        //若取不到第三个值，则会抛出ArrayOutOfBoundException，直接丢弃异常
                     }
                 }
             }
             client.close();
-            // TEST
-//            ArrayList<String> sortedIndices = new ArrayList<>();
-//            for (Set<String> set : sortedMapIndices.values())
-//                sortedIndices.addAll(set);
-//            logger.info(sortedIndices);
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -202,7 +207,7 @@ public class DiskKeeperThread extends Thread {
     }
 
     public void diskUsageKeeper() {
-        logger.info("##### Disk Usage Keeper Chech Start #####");
+        logger.info("##### Disk Usage Keeper Check Start #####");
 
         int diskUsage = calculateDiskUsage();
         //更新sortedMapIndices
@@ -296,18 +301,25 @@ public class DiskKeeperThread extends Thread {
          at org.elasticsearch.disk.DiskKeeperThread.run(DiskKeeperThread.java:84) ~[?:?]
 
          */
+        String[] indicesInfo;
+        //若返回为空行，则不处理
+        String res = "  ".trim();
+//        indicesInfo = res.isEmpty()? new String[]{} : res.split("\n");
+        indicesInfo = res.split("\n");
+        for (String s : indicesInfo)
+            System.out.println("nihao " + s.isEmpty());
     }
 }
 
-class DiskKeeperThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
-    private Logger logger;
-
-    public DiskKeeperThreadExceptionHandler(Logger logger) {
-        this.logger = logger;
-    }
-
-    @Override
-    public void uncaughtException(Thread t, Throwable e) {
-        logger.info("Exception Ignored: " + e.getMessage());
-    }
-}
+//class DiskKeeperThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
+//    private Logger logger;
+//
+//    public DiskKeeperThreadExceptionHandler(Logger logger) {
+//        this.logger = logger;
+//    }
+//
+//    @Override
+//    public void uncaughtException(Thread t, Throwable e) {
+//        logger.info("Exception Ignored: " + e.getMessage());
+//    }
+//}

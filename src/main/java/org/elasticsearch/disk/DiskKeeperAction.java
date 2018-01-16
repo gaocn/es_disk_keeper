@@ -5,6 +5,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.observer.DiskKeeperThreadListener;
 import org.elasticsearch.rest.*;
 
 import java.io.IOException;
@@ -26,7 +27,11 @@ public class DiskKeeperAction extends BaseRestHandler {
         //运行DiskKeeper相关线程，用于周期
         logger.info(getClass().getName() + "is Loaded" );
 
-        new DiskKeeperThread("DiskKeeper", logger).start();
+        DiskKeeperThread run = new DiskKeeperThread("DiskKeeper", logger);
+        //观察者模式，添加观察者
+        DiskKeeperThreadListener listener = new DiskKeeperThreadListener("DiskKeeper", logger);
+        run.addObserver(listener);
+        new Thread(run).start();
     }
 
     @Override
@@ -50,7 +55,7 @@ class DiskKeeperMsg implements ToXContent {
     public XContentBuilder toXContent(XContentBuilder xContentBuilder, Params params) throws IOException {
         return xContentBuilder
                     .startObject("plugin-settings")
-                        .field("threadSleepPeriod", DiskKeeperThread.threadSleepPeriod +"s")
+                        .field("threadSleepPeriod", DiskKeeperThread.threadSleepPeriod +"m")
                         .field("indicesPersistenceDay", DiskKeeperThread.indicesPersistenceDay+"d")
                         .field("diskWatermarkPercent", DiskKeeperThread.diskWatermarkPercent + "%")
                         .field("httpPort", DiskKeeperThread.HTTP_PORT)
